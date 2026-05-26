@@ -1,8 +1,8 @@
 # Claude Code Notify
 
-Smart macOS notifications for Claude Code that **know which session you're looking at**.
+**CLI-native** session-aware notifications for Claude Code. Built for terminal power users who run multiple Claude Code sessions in parallel.
 
-Unlike other notification tools that fire unconditionally, this uses TTY-level detection to skip notifications when you're watching the *specific* Claude Code session that triggered the event.
+Unlike other notification tools, this doesn't just fire on every event — it checks whether you're already looking at the *specific* session that triggered it. Only notifies when you're truly away.
 
 ## Features
 
@@ -69,8 +69,17 @@ The jump action iterates all Terminal windows/tabs to find the matching TTY and 
 
 Copy `scripts/session-title.sh` to `~/.claude/scripts/` and add a `SessionStart` hook if you want a dialog to name each session at startup.
 
-## Related
+## vs. Other Tools
 
-- [CCNotify](https://github.com/dazuiba/CCNotify) — Python + terminal-notifier
-- [claude-code-notification](https://github.com/wyattjoh/claude-code-notification) — Rust, cross-platform
-- [agent-notify](https://github.com/cfngc4594/agent-notify) — Multi-channel (sound, voice, ntfy)
+| Feature | claude-code-notify | [CCNotify](https://github.com/dazuiba/CCNotify) | [agent-notify](https://github.com/cfngc4594/agent-notify) |
+|---|---|---|---|
+| Session-aware (skip when looking) | ✅ TTY-level | — | — |
+| Click-to-jump | → exact Terminal tab | → VS Code project | — |
+| Reply summary in notification | ✅ 120-char | — | — |
+| Multi-session safe | ✅ | — | — |
+| Multi-channel (sound/voice/ntfy) | — | — | ✅ |
+| Task duration | — | ✅ | — |
+| Cross-platform | macOS + Windows (beta) | macOS | macOS |
+| **Target user** | **CLI power user** | VS Code user | Multi-platform generalist |
+
+**claude-code-notify** is purpose-built for the terminal-native workflow: multiple Claude Code windows running in parallel, no IDE dependency, notifications that don't interrupt you when you're already watching.
