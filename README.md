@@ -19,19 +19,22 @@ Unlike other notification tools, this doesn't just fire on every event — it ch
 
 ## Install
 
-```bash
-# 1. Install terminal-notifier
-brew install terminal-notifier
+### One-liner
 
-# 2. Copy the script
+```bash
+curl -fsSL https://raw.githubusercontent.com/ayahugoll-creator/claude-code-notify/main/install.sh | bash
+```
+
+### Manual
+
+```bash
+brew install terminal-notifier
 mkdir -p ~/.claude/scripts
 cp scripts/notify-if-away.sh ~/.claude/scripts/
 chmod +x ~/.claude/scripts/notify-if-away.sh
-
-# 3. Add hooks to ~/.claude/settings.json
 ```
 
-Add this to your `~/.claude/settings.json`:
+Then add to `~/.claude/settings.json`:
 
 ```json
 "hooks": {
