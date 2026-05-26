@@ -4,7 +4,7 @@
 
 Unlike other notification tools, this doesn't just fire on every event — it checks whether you're already looking at the *specific* session that triggered it. Only notifies when you're truly away.
 
-**[▶ Watch the animated demo](https://raw.githack.com/ayahugoll-creator/claude-code-notify/main/demo.html)** *(interactive, 4-step auto-play)*
+![demo](demo.gif)
 
 ## Features
 
