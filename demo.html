@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>claude-code-notify — Demo</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@500;600;700&display=swap');
+
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+
+:root{
+  --bg:#0d1117; --term-bg:#1a1b26; --term-hdr:#24283b;
+  --text:#a9b1d6; --dim:#565f89; --green:#9ece6a; --blue:#7aa2f7;
+  --orange:#e0af68; --purple:#bb9af7; --red:#f7768e; --cyan:#7dcfff;
+  --border:#2f3547;
+}
+
+body{
+  background:var(--bg); display:flex; align-items:center; justify-content:center;
+  min-height:100vh; font-family:'Inter',sans-serif;
+}
+
+.demo{
+  position:relative; width:800px; height:520px;
+  background:var(--bg); border:1px solid var(--border); border-radius:16px;
+  overflow:hidden; box-shadow:0 0 60px rgba(0,0,0,.5),0 0 20px rgba(126,207,255,.12);
+  user-select:none;
+}
+
+/* ---------- Stage ---------- */
+.stage{ position:absolute; inset:0 0 56px 0; }
+
+/* ---------- Desktop wallpaper ---------- */
+.wallpaper{
+  position:absolute; inset:0;
+  background: radial-gradient(ellipse at 70% 40%, #1e1a3a 0%, #0d1117 55%);
+  transition: opacity 0.6s;
+}
+.wallpaper.hidden{ opacity:0; pointer-events:none; }
+
+/* ---------- Terminal windows ---------- */
+.term{
+  position:absolute; width:380px; height:300px;
+  background:var(--term-bg); border-radius:10px;
+  border:1px solid var(--border);
+  display:flex; flex-direction:column;
+  transition: all 0.55s cubic-bezier(0.22,0.61,0.36,1);
+  box-shadow: 0 4px 24px rgba(0,0,0,.4);
+}
+.term.front{
+  z-index:3; border-color:var(--cyan);
+  box-shadow: 0 0 30px rgba(126,207,255,.25),0 8px 32px rgba(0,0,0,.5);
+}
+.term.back{
+  z-index:1; opacity:.6;
+  box-shadow: 0 2px 12px rgba(0,0,0,.3);
+}
+
+/* Positions for term A (left/front default) */
+.pos-a-front{ top:24px; left:28px; }
+.pos-a-back{  top:24px; left:28px; }
+.pos-b-front{ top:24px; left:28px; }
+.pos-b-back{  top:34px; left:52px; }
+
+.term-hdr{
+  background:var(--term-hdr); padding:10px 14px;
+  display:flex; align-items:center; gap:10px; flex-shrink:0;
+  border-radius:10px 10px 0 0;
+}
+.dots{display:flex; gap:6px;}
+.dots span{width:10px;height:10px;border-radius:50%;}
+.dots span:nth-child(1){background:#ff5f57;}
+.dots span:nth-child(2){background:#febc2e;}
+.dots span:nth-child(3){background:#28c840;}
+.tab{
+  font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--dim);
+  background:var(--term-bg); padding:4px 12px; border-radius:6px;
+}
+.term-body{
+  flex:1; padding:14px 16px;
+  font-family:'JetBrains Mono',monospace; font-size:11px; line-height:1.65;
+  color:var(--text); overflow:hidden;
+}
+.term-body .p{color:var(--green);}
+.term-body .c{color:var(--blue);}
+.term-body .o{color:var(--text);}
+.term-body .d{color:var(--dim);}
+.term-body .w{color:var(--orange);}
+.term-body .r{color:var(--red);}
+.term-body .y{color:var(--cyan);}
+.cursor::after{content:"▊";color:var(--cyan);animation:blink 1s step-end infinite;}
+@keyframes blink{50%{opacity:0;}}
+
+.term-badge{
+  position:absolute; top:8px; right:12px; z-index:5;
+  font-size:10px; font-weight:600; padding:2px 10px; border-radius:20px;
+  transition: all 0.5s;
+}
+.badge-watch{background:rgba(126,207,255,.18);color:var(--cyan);}
+.badge-run{background:rgba(224,175,104,.15);color:var(--orange);}
+.badge-done{background:rgba(158,206,106,.15);color:var(--green);}
+.badge-hide{opacity:0;}
+
+.term-label{
+  position:absolute; bottom:-24px; left:50%; transform:translateX(-50%);
+  font-size:10.5px; font-weight:600; color:var(--dim); white-space:nowrap;
+  transition: color 0.5s;
+}
+.term.front .term-label{color:var(--cyan);}
+
+/* ---------- Desktop apps ---------- */
+.desktop-apps{
+  position:absolute; inset:20px; display:flex; align-items:flex-end; justify-content:center;
+  gap:36px; padding-bottom:30px;
+  opacity:1; transition: opacity 0.5s;
+}
+.desktop-apps.hidden{opacity:0; pointer-events:none;}
+.da{
+  display:flex; flex-direction:column; align-items:center; gap:8px;
+}
+.da-icon{
+  width:64px; height:64px; border-radius:16px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:24px; transition: transform 0.25s;
+}
+.da-text{font-size:10.5px; color:var(--dim); font-weight:500;}
+.da-icon.br{background:linear-gradient(135deg,#4285f4,#34a853);}
+.da-icon.sl{background:linear-gradient(135deg,#4a154b,#36c5f0);}
+.da-icon.fd{background:linear-gradient(135deg,#1a1b26,#565f89);}
+
+/* ---------- Notifications sidebar ---------- */
+.notif-sidebar{
+  position:absolute; top:14px; right:14px;
+  width:210px; background:rgba(30,30,46,.94);
+  backdrop-filter:blur(16px);
+  -webkit-backdrop-filter:blur(16px);
+  border:.5px solid rgba(255,255,255,.1);
+  border-radius:12px; padding:6px 8px;
+  box-shadow:0 4px 20px rgba(0,0,0,.5);
+  z-index:20; opacity:0; transform:translateX(30px);
+  transition: all 0.45s cubic-bezier(0.22,0.61,0.36,1);
+  pointer-events:none;
+}
+.notif-sidebar.show{opacity:1;transform:translateX(0);pointer-events:auto;}
+.notif-sidebar-label{
+  font-size:9px; font-weight:700; color:var(--dim); text-transform:uppercase;
+  letter-spacing:0.8px; padding:4px 8px 2px;
+}
+.ns-item{
+  display:flex; gap:10px; padding:8px; border-radius:10px;
+  transition: all 0.3s; cursor:default;
+  position:relative;
+}
+.ns-item.active{background:rgba(122,162,247,.12);}
+.ns-item-icon{
+  width:34px; height:34px; border-radius:8px;
+  background:var(--term-bg);
+  display:flex; align-items:center; justify-content:center;
+  flex-shrink:0; font-size:14px;
+}
+.ns-item-body{flex:1; min-width:0;}
+.ns-item-app{font-size:11px; font-weight:600; color:#e4e4f0;}
+.ns-item-sub{font-size:10px; color:var(--text); margin-top:1px;}
+.ns-item-msg{
+  font-size:9.5px; color:var(--dim); line-height:1.45; margin-top:3px;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+}
+.ns-item.clickable .ns-item-app{color:var(--green);}
+
+/* ---------- Mouse cursor ---------- */
+.mouse{
+  position:absolute; z-index:30; pointer-events:none;
+  transition: all 0.8s cubic-bezier(0.25,0.46,0.45,0.94);
+  opacity:0;
+}
+.mouse.show{opacity:1;}
+.mouse svg{width:22px;height:22px;filter:drop-shadow(1px 2px 2px rgba(0,0,0,.5));}
+
+/* click ripple */
+.click-ripple{
+  position:absolute; width:0; height:0; border-radius:50%;
+  background:rgba(255,255,255,.3); z-index:31; pointer-events:none;
+  transform:translate(-50%,-50%);
+  transition: none;
+}
+.click-ripple.pulse{
+  width:40px; height:40px;
+  opacity:0;
+  transition: all 0.4s ease-out;
+}
+
+/* ---------- Controls ---------- */
+.controls{
+  position:absolute; bottom:0; left:0; right:0; height:56px;
+  display:flex; align-items:center; justify-content:center; gap:14px;
+  border-top:1px solid var(--border);
+  background:rgba(13,17,23,.85); backdrop-filter:blur(10px);
+}
+.btn{
+  background:var(--term-hdr); border:1px solid var(--border);
+  color:var(--text); padding:7px 16px; border-radius:8px;
+  font-family:'Inter',sans-serif; font-size:11px; font-weight:600;
+  cursor:pointer; transition: all 0.2s;
+}
+.btn:hover{background:#313652;color:#fff;}
+.btn.on{background:var(--blue);color:#0d1117;border-color:var(--blue);}
+.dots-nav{display:flex;gap:7px;}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--border);
+     cursor:pointer;transition:all 0.3s;}
+.dot.on{background:var(--blue);box-shadow:0 0 8px rgba(122,162,247,.5);}
+</style>
+</head>
+<body>
+
+<div class="demo" id="demo">
+  <div class="stage" id="stage">
+    <!-- Wallpaper -->
+    <div class="wallpaper hidden" id="wallpaper"></div>
+
+    <!-- Desktop apps -->
+    <div class="desktop-apps hidden" id="dapps">
+      <div class="da"><div class="da-icon br">🌐</div><div class="da-text">Browser</div></div>
+      <div class="da"><div class="da-icon sl">💬</div><div class="da-text">Slack</div></div>
+      <div class="da"><div class="da-icon fd">📁</div><div class="da-text">Finder</div></div>
+    </div>
+
+    <!-- Terminal A — debugging API -->
+    <div class="term front pos-a-front" id="termA">
+      <div class="term-hdr">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="tab">claude: debugging API</div>
+      </div>
+      <div class="term-body">
+        <span class="d">~ took 12s</span><br><br>
+        <span class="p">❯</span> <span class="c">debug the 401 error</span><br><br>
+        <span class="o">The issue is a missing</span><br>
+        <span class="o"><span class="w">Authorization</span> header in</span><br>
+        <span class="o">POST to <span class="y">/api/v2/refresh</span>.</span><br>
+        <span class="o">Middleware doesn't inject it</span><br>
+        <span class="o">for sub-requests...</span><br><br>
+        <span class="d cursor">_</span>
+      </div>
+      <div class="term-badge badge-watch" id="badgeA">watching</div>
+      <div class="term-label" id="labelA">You're watching → no notification</div>
+    </div>
+
+    <!-- Terminal B — writing tests -->
+    <div class="term back pos-b-back" id="termB">
+      <div class="term-hdr">
+        <div class="dots"><span></span><span></span><span></span></div>
+        <div class="tab">claude: writing tests</div>
+      </div>
+      <div class="term-body">
+        <span class="d">~ took 28s</span><br><br>
+        <span class="p">❯</span> <span class="c">write auth integration tests</span><br><br>
+        <span class="o">Created <span class="c">auth.test.ts</span></span><br>
+        <span class="o"><span class="p">✓</span> token refresh — valid creds</span><br>
+        <span class="o"><span class="p">✓</span> expired token → 401</span><br>
+        <span class="o"><span class="p">✓</span> missing header → 401</span><br>
+        <span class="o"><span class="p">✓</span> rate limit backoff (429)</span><br>
+        <span class="o"><span class="w">⚠ edge: sub-request auth</span></span><br><br>
+        <span class="d cursor">_</span>
+      </div>
+      <div class="term-badge badge-hide" id="badgeB">running</div>
+      <div class="term-label" id="labelB">Session B: writing tests</div>
+    </div>
+
+    <!-- Notification sidebar -->
+    <div class="notif-sidebar" id="notifSidebar">
+      <div class="notif-sidebar-label">Notifications</div>
+      <div class="ns-item active" id="nsItem">
+        <div class="ns-item-icon">⌨️</div>
+        <div class="ns-item-body">
+          <div class="ns-item-app">Claude Code</div>
+          <div class="ns-item-sub">Finished — Session B</div>
+          <div class="ns-item-msg">the issue was a missing Authorization header in the POST to /api/v2/refresh, causing 401 responses across all downstream services</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mouse cursor -->
+    <div class="mouse" id="mouse">
+      <svg viewBox="0 0 24 24"><path d="M4 2l16 12-7 1-4 7-5-20z" fill="#fff" stroke="#555" stroke-width=".3"/></svg>
+    </div>
+
+    <!-- Ripple -->
+    <div class="click-ripple" id="ripple"></div>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <button class="btn" id="prevBtn">◀ Prev</button>
+    <button class="btn on" id="playBtn">⏸ Pause</button>
+    <div class="dots-nav" id="dotsNav"></div>
+    <button class="btn" id="nextBtn">Next ▶</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  const termA    = document.getElementById('termA');
+  const termB    = document.getElementById('termB');
+  const badgeA   = document.getElementById('badgeA');
+  const badgeB   = document.getElementById('badgeB');
+  const labelA   = document.getElementById('labelA');
+  const labelB   = document.getElementById('labelB');
+  const wallpaper= document.getElementById('wallpaper');
+  const dapps    = document.getElementById('dapps');
+  const notif    = document.getElementById('notifSidebar');
+  const nsItem   = document.getElementById('nsItem');
+  const mouse    = document.getElementById('mouse');
+  const ripple   = document.getElementById('ripple');
+  const playBtn  = document.getElementById('playBtn');
+  const dotsNav  = document.getElementById('dotsNav');
+
+  // Build dots
+  for(let i=0;i<4;i++){
+    const d=document.createElement('span');
+    d.className='dot'+(i===0?' on':'');
+    d.onclick=()=>goTo(i);
+    dotsNav.appendChild(d);
+  }
+
+  let step=0, playing=true, timer;
+
+  function goTo(n){
+    step=n; clearTimeout(timer);
+    if(playing) timer=setTimeout(autoNext,5000);
+
+    // Reset
+    wallpaper.classList.add('hidden');
+    dapps.classList.add('hidden');
+    notif.classList.remove('show');
+    nsItem.classList.remove('clickable','active');
+    mouse.classList.remove('show');
+    ripple.classList.remove('pulse');
+    termA.classList.remove('front','back');
+    termB.classList.remove('front','back');
+    termA.className='term pos-a-front';
+    termB.className='term pos-b-back';
+    badgeA.className='term-badge badge-watch';
+    badgeB.className='term-badge badge-hide';
+    labelA.textContent=''; labelB.textContent='';
+
+    if(step===0){
+      // Both windows open, A in front — user watching A
+      termA.classList.add('front');
+      termB.classList.add('back');
+      badgeA.className='term-badge badge-watch';
+      badgeB.className='term-badge badge-run';
+      labelA.textContent='You\'re watching → no notification';
+      labelB.textContent='Session B: writing tests';
+    }else if(step===1){
+      // B finishes, but A still front — no notification
+      termA.classList.add('front');
+      termB.classList.add('back');
+      badgeA.className='term-badge badge-watch';
+      badgeB.className='term-badge badge-done';
+      labelA.textContent='Still watching Session A';
+      labelB.textContent='Finished — but no notification!';
+    }else if(step===2){
+      // User switches away — notification appears
+      wallpaper.classList.remove('hidden');
+      dapps.classList.remove('hidden');
+      termA.className='term pos-a-back back';
+      termB.className='term pos-b-back back';
+      badgeA.className='term-badge badge-hide';
+      badgeB.className='term-badge badge-done';
+      // Show notification
+      setTimeout(()=>{
+        notif.classList.add('show');
+      },300);
+    }else if(step===3){
+      // Click notification → B jumps to front
+      wallpaper.classList.remove('hidden');
+      dapps.classList.remove('hidden');
+      termA.className='term pos-a-back back';
+      termB.className='term pos-b-back back';
+      notif.classList.add('show');
+      nsItem.classList.add('clickable');
+      labelB.textContent='Click to jump → back to the right session';
+      badgeB.className='term-badge badge-done';
+
+      // Mouse moves to notification and clicks
+      mouse.classList.add('show');
+      mouse.style.top='124px'; mouse.style.left='670px';
+      setTimeout(()=>{
+        // Click ripple on notification
+        ripple.style.top='124px'; ripple.style.left='670px';
+        ripple.classList.add('pulse');
+        // After click, dismiss notification + bring B forward
+        setTimeout(()=>{
+          notif.classList.remove('show');
+          wallpaper.classList.add('hidden');
+          dapps.classList.add('hidden');
+          termB.className='term pos-b-front front';
+          termA.className='term pos-a-back back';
+          badgeB.className='term-badge badge-watch';
+          labelB.textContent='Jumped to Session B';
+          mouse.classList.remove('show');
+        },500);
+      },900);
+    }
+
+    // Update dots
+    [...dotsNav.children].forEach((d,i)=>d.classList.toggle('on',i===n));
+  }
+
+  function autoNext(){ goTo((step+1)%4); }
+
+  playBtn.onclick=()=>{
+    playing=!playing;
+    playBtn.textContent=playing?'⏸ Pause':'▶ Play';
+    playBtn.classList.toggle('on',playing);
+    if(playing)timer=setTimeout(autoNext,4000);
+    else clearTimeout(timer);
+  };
+  document.getElementById('prevBtn').onclick=()=>goTo((step-1+4)%4);
+  document.getElementById('nextBtn').onclick=()=>goTo((step+1)%4);
+  document.addEventListener('keydown',e=>{
+    if(e.key==='ArrowLeft')goTo((step-1+4)%4);
+    if(e.key==='ArrowRight')goTo((step+1)%4);
+    if(e.key===' '){e.preventDefault();playBtn.click();}
+  });
+
+  goTo(0);
+})();
+</script>
+</body>
+</html>
