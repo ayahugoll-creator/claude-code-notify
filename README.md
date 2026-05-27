@@ -88,3 +88,7 @@ Copy `scripts/session-title.sh` to `~/.claude/scripts/` and add a `SessionStart`
 | **Target user** | **CLI power user** | VS Code user | Multi-platform generalist |
 
 **claude-code-notify** is purpose-built for the terminal-native workflow: multiple Claude Code windows running in parallel, no IDE dependency, notifications that don't interrupt you when you're already watching.
+
+## tmux
+
+Fully compatible — TTY detection resolves the real terminal via `tmux display-message`. Use with a split-pane file watcher (left: Claude Code, right: `ls -lt` or similar) to always see what files were touched.
