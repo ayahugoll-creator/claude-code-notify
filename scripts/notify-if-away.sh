@@ -39,6 +39,14 @@ while [ "$PID" -gt 1 ] 2>/dev/null; do
   PID=$(ps -o ppid= -p $PID 2>/dev/null | tr -d ' ')
 done
 
+# If running inside tmux, resolve the real terminal TTY
+if [ -n "$TMUX" ]; then
+  REAL_TTY=$(tmux display-message -p '#{client_tty}' 2>/dev/null)
+  if [ -n "$REAL_TTY" ]; then
+    OWN_TTY="${REAL_TTY#/dev/}"
+  fi
+fi
+
 # Fail safe: if TTY unknown, notify anyway (no click-to-jump)
 if [ -z "$OWN_TTY" ]; then
   terminal-notifier -title "$TITLE" -message "$SUMMARY" -sound "$SOUND" -activate "com.apple.Terminal" 2>/dev/null &
